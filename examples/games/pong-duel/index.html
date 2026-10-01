@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>Pong Duel</title>
+<style>html,body{margin:0;height:100%;background:#0b1020;color:#fff;font-family:system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#msg{position:fixed;inset:0;display:grid;place-items:center;font-weight:900;font-size:clamp(20px,5vw,40px);text-shadow:0 2px 12px #000;pointer-events:none;text-align:center}
+#msg small{display:block;font-size:.5em;font-weight:600;opacity:.8}</style></head>
+<body><canvas id="c"></canvas><div id="msg">Connecting…</div>
+<script src="/sdk/gnarcadia.iife.js"></script>
+<script>
+(async () => {
+  const g = await Gnarcadia.init();
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d'), msg = document.getElementById('msg');
+  const W = 160, H = 90; let state = null, phase = 'waiting', countdownEndsAt = 0, results = null;
+  const skin = g.player.cosmetics.skin || '';
+  const myColor = skin.includes('lava') ? '#ff6a00' : skin.includes('neon') ? '#4ff0ff' : '#ffffff';
+  g.ready();
+  const rt = await g.realtime();
+  rt.on('state', (s) => { state = s; });
+  rt.on('phase', (p, c) => { phase = p; countdownEndsAt = c || 0; });
+  rt.on('event', (name, d) => { if (name === 'point') flash = 10; });
+  rt.on('results', (r, s) => { results = { r, s }; phase = 'ended'; g.gameOver({ results: r }); });
+  rt.on('error', (code, m) => { msg.textContent = code + ': ' + m; });
+  phase = rt.phase;
+  let flash = 0, lastSent = 0;
+  const sendY = (clientY) => { const y = (clientY / innerHeight) * H; const now = performance.now(); if (now - lastSent > 33) { lastSent = now; rt.send({ y }); } };
+  addEventListener('pointermove', (e) => sendY(e.clientY)); addEventListener('pointerdown', (e) => sendY(e.clientY));
+  addEventListener('keydown', (e) => { const me = state?.paddles?.[rt.playerId]; if (!me) return; if (e.key === 'ArrowUp' || e.key === 'w') rt.send({ y: me.y - 12 }); if (e.key === 'ArrowDown' || e.key === 's') rt.send({ y: me.y + 12 }); });
+  function draw() {
+    requestAnimationFrame(draw);
+    const dpr = devicePixelRatio || 1; if (cv.width !== innerWidth * dpr) { cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; }
+    const sx = cv.width / W, sy = cv.height / H; ctx.setTransform(sx, 0, 0, sy, 0, 0);
+    ctx.fillStyle = flash > 0 ? (flash--, '#1a2250') : '#0b1020'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#ffffff33'; ctx.setLineDash([2, 2]); ctx.lineWidth = .6; ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke(); ctx.setLineDash([]);
+    if (state) {
+      for (const [pid, pd] of Object.entries(state.paddles)) { ctx.fillStyle = pid === rt.playerId ? myColor : '#ffe14d'; const x = pd.side === 'left' ? 5 : W - 7; rr(x, pd.y - 9, 2, 18, 1); }
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(state.ball.x, state.ball.y, 1.6, 0, 7); ctx.fill();
+      ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center';
+      const [l, r] = state.order; ctx.fillStyle = '#ffffffaa'; ctx.fillText(state.scores[l] ?? 0, W / 2 - 14, 12); ctx.fillText(state.scores[r] ?? 0, W / 2 + 14, 12);
+    }
+    const names = [...rt.players.values()].map(p => p.displayName).join(' vs ');
+    if (phase === 'waiting') msg.innerHTML = `Waiting for opponent…<small>${names}</small>`;
+    else if (phase === 'countdown') msg.textContent = Math.max(0, Math.ceil((countdownEndsAt - Date.now()) / 1000)) || 'GO!';
+    else if (phase === 'ended' && results) { const me = results.r.find(x => x.playerId === rt.playerId); msg.innerHTML = (me?.rank === 1 ? '🏆 You win!' : 'Defeat') + `<small>${names}</small>`; }
+    else msg.textContent = '';
+  }
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); }
+  draw();
+})();
+</script></body></html>

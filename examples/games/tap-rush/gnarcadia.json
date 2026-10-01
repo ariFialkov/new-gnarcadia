@@ -1,0 +1,20 @@
+{
+  "id": "tap-rush",
+  "name": "Tap Rush",
+  "version": "1.0.0",
+  "developer": "Gnarcadia",
+  "category": "arcade",
+  "tags": ["reaction", "tapping", "quick"],
+  "tagline": "30 seconds. Tap every target. Miss nothing.",
+  "description": "A pure reaction test: targets pop up in the same spots for every entrant (shared seed). Tap them before they shrink away. Score = hits minus misses, with combo bonuses for speed.",
+  "entry": "index.html",
+  "cover": "cover.svg",
+  "orientation": "any",
+  "aspect": "9:16",
+  "randomness": "seeded_shared",
+  "skillStatement": "Every entrant in a bracket receives an identical, deterministic sequence of target positions and timings derived from the platform seed. Outcome depends solely on the player's reaction time and accuracy.",
+  "cosmeticSlots": ["skin"],
+  "formats": [
+    { "format": "async_score", "minPlayers": 2, "maxPlayers": 10, "entryTiersCents": [100, 200, 500], "rakeBps": 1000, "payoutBps": [5000, 3000, 2000], "maxDurationSec": 600, "fillWaitSec": 0, "roundTimeLimitSec": 60 }
+  ]
+}

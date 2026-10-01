@@ -1,0 +1,27 @@
+{
+  "name": "gnarcadia",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Gnarcadia — skill-based real-money multiplayer arcade (PWA, SDK, realtime, API, analytics)",
+  "packageManager": "pnpm@10.28.0",
+  "pnpm": { "onlyBuiltDependencies": ["esbuild", "@electric-sql/pglite"] },
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter ./apps/api --filter ./apps/realtime --filter ./apps/arcade --filter ./apps/analytics run dev",
+    "dev:api": "pnpm --filter @gnarcadia/api dev",
+    "dev:realtime": "pnpm --filter @gnarcadia/realtime dev",
+    "dev:arcade": "pnpm --filter @gnarcadia/arcade dev",
+    "dev:analytics": "pnpm --filter @gnarcadia/analytics dev",
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "seed": "pnpm --filter @gnarcadia/api seed",
+    "smoke": "node scripts/smoke.mjs",
+    "gnarcadia": "node packages/cli/dist/index.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "tsx": "^4.20.5",
+    "vitest": "^3.2.4"
+  }
+}

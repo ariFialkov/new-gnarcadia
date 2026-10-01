@@ -1,0 +1,17 @@
+{
+  "name": "@gnarcadia/sdk",
+  "version": "0.1.0",
+  "description": "Gnarcadia game SDK for browser games (iframe bridge, seeded RNG, realtime client)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }, "./browser": "./dist/gnarcadia.iife.js" },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": { "@gnarcadia/protocol": "workspace:*" },
+  "devDependencies": { "esbuild": "^0.25.9" }
+}

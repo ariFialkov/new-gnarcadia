@@ -1,0 +1,21 @@
+{
+  "id": "pong-duel",
+  "name": "Pong Duel",
+  "version": "1.0.0",
+  "developer": "Gnarcadia",
+  "category": "sports",
+  "tags": ["1v1", "classic", "realtime"],
+  "tagline": "First to 5. Server-authoritative. No excuses.",
+  "description": "Head-to-head pong on an authoritative server. Move your paddle, read the angle, win the rally. First to 5 points or the higher score at time.",
+  "entry": "index.html",
+  "server": "server.js",
+  "cover": "cover.svg",
+  "orientation": "landscape",
+  "aspect": "16:9",
+  "randomness": "seeded_shared",
+  "skillStatement": "Ball physics are fully deterministic and identical for both players; the only inputs are paddle movements. Points are scored solely by out-manoeuvring the opponent.",
+  "cosmeticSlots": ["skin"],
+  "formats": [
+    { "format": "duel", "minPlayers": 2, "maxPlayers": 2, "entryTiersCents": [100, 500, 1000, 2500], "rakeBps": 1000, "payoutBps": [10000], "maxDurationSec": 180, "fillWaitSec": 0 }
+  ]
+}

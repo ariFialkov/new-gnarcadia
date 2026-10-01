@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>Tap Rush</title>
+<style>
+  html,body{margin:0;height:100%;background:#1b1140;font-family:system-ui,sans-serif;color:#fff;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+  #hud{position:fixed;inset:0 0 auto 0;display:flex;justify-content:space-between;padding:12px 16px;font-weight:800;font-size:20px;pointer-events:none;text-shadow:0 2px 8px #0008}
+  #arena{position:fixed;inset:0}
+  .t{position:absolute;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff7,#0000 40%),#ffe14d;box-shadow:0 0 24px #ffe14d88;transform:translate(-50%,-50%) scale(var(--s,1));transition:transform .08s;will-change:transform}
+  .t.crown{background:radial-gradient(circle at 35% 35%,#fff7,#0000 40%),#ffb020}
+  .pop{position:absolute;transform:translate(-50%,-50%);font-weight:900;color:#4ff0ff;animation:up .5s forwards;pointer-events:none}
+  @keyframes up{to{transform:translate(-50%,-120%);opacity:0}}
+  #start,#end{position:fixed;inset:0;display:grid;place-items:center;background:#1b1140ee;text-align:center}
+  button{font:inherit;font-weight:900;font-size:22px;padding:16px 36px;border:0;border-radius:999px;background:linear-gradient(90deg,#ff4fa3,#7c3aed);color:#fff;box-shadow:0 8px 24px #ff4fa366;cursor:pointer}
+  h1{font-size:44px;margin:0 0 8px;letter-spacing:-1px}
+</style></head>
+<body>
+<div id="hud"><span id="score">0</span><span id="time">60</span></div>
+<div id="arena"></div>
+<div id="start"><div><h1>TAP RUSH</h1><p>Tap targets before they shrink. Same targets for everyone — fastest fingers win.</p><button id="go">Start</button></div></div>
+<div id="end" hidden><div><h1>Time!</h1><p id="final"></p><button id="exit">Back to arcade</button></div></div>
+<script src="/sdk/gnarcadia.iife.js"></script>
+<script>
+(async () => {
+  const g = await Gnarcadia.init();
+  const rnd = g.random;                         // deterministic — identical for every entrant
+  const DURATION = Math.min(60, g.match.timeLimitSec) * 1000;
+  const arena = document.getElementById('arena'), scoreEl = document.getElementById('score'), timeEl = document.getElementById('time');
+  const skin = g.player.cosmetics.skin || '';
+  let score = 0, combo = 0, running = false, start = 0, idx = 0, live = new Set();
+  // Pre-generate the whole target schedule from the seed so timing is identical for all players.
+  const schedule = []; let t = 600;
+  while (t < DURATION - 800) { schedule.push({ at: t, x: 0.1 + rnd.next() * 0.8, y: 0.15 + rnd.next() * 0.75, life: 1500 - Math.min(900, t / 60), size: 70 - Math.min(30, t / 2000) }); t += 420 - Math.min(250, t / 240) + rnd.int(0, 120); }
+  g.ready();
+  document.getElementById('go').onclick = () => { document.getElementById('start').hidden = true; running = true; start = performance.now(); requestAnimationFrame(tick); g.track('round_start'); };
+  function spawn(s) {
+    const el = document.createElement('div'); el.className = 't' + (skin === 'skin-tap-crown-cad' || skin === 'skin-tap-crown-usd' ? ' crown' : '');
+    el.style.left = (s.x * 100) + '%'; el.style.top = (s.y * 100) + '%'; el.style.width = el.style.height = s.size + 'px';
+    const born = performance.now(); let hit = false;
+    const kill = () => { live.delete(obj); el.remove(); };
+    const obj = { el, kill, update(now) { const k = 1 - (now - born) / s.life; if (k <= 0) { if (!hit) { score -= 1; combo = 0; flash(s, 'miss', '#ff4fa3'); } kill(); return; } el.style.setProperty('--s', (0.4 + 0.6 * k).toFixed(3)); } };
+    const onHit = (ev) => { if (hit || !running) return; hit = true; ev.preventDefault(); const dt = performance.now() - born; combo++; const pts = 1 + (dt < 350 ? 2 : dt < 600 ? 1 : 0) + Math.min(3, Math.floor(combo / 5)); score += pts; g.logInput({ i: schedule.indexOf(s), dt: Math.round(dt) }); flash(s, '+' + pts, '#4ff0ff'); kill(); };
+    el.addEventListener('pointerdown', onHit);
+    arena.appendChild(el); live.add(obj);
+  }
+  function flash(s, text, color) { const p = document.createElement('div'); p.className = 'pop'; p.textContent = text; p.style.color = color; p.style.left = (s.x * 100) + '%'; p.style.top = (s.y * 100) + '%'; arena.appendChild(p); setTimeout(() => p.remove(), 500); scoreEl.textContent = score; }
+  arena.addEventListener('pointerdown', (ev) => { if (ev.target === arena && running) { score -= 1; combo = 0; scoreEl.textContent = score; } });
+  function tick(now) {
+    if (!running) return;
+    const el = now - start;
+    while (idx < schedule.length && schedule[idx].at <= el) spawn(schedule[idx++]);
+    for (const o of [...live]) o.update(now);
+    timeEl.textContent = Math.max(0, Math.ceil((DURATION - el) / 1000));
+    if (el >= DURATION || g.isPaused && false) return finish();
+    requestAnimationFrame(tick);
+  }
+  g.onTerminate(() => { running = false; });
+  async function finish() {
+    running = false; for (const o of [...live]) o.kill();
+    document.getElementById('final').textContent = `Score ${score}`; document.getElementById('end').hidden = false;
+    await g.submitScore(score);                    // host forwards to the API with the input-log fingerprint
+    g.gameOver({ score });
+  }
+  document.getElementById('exit').onclick = () => g.exit();
+})();
+</script>
+</body></html>

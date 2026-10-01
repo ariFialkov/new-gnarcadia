@@ -1,0 +1,20 @@
+{
+  "id": "__GAME_ID__",
+  "name": "__GAME_NAME__",
+  "version": "0.1.0",
+  "developer": "Your studio",
+  "category": "action",
+  "tags": ["perpetual", "arena", "io"],
+  "tagline": "Drop in. Eat smaller blobs. Cash out whenever you dare.",
+  "description": "A perpetual arena: your entry becomes a bounty on your head. Eat smaller blobs to claim their bounty, grow, and leave whenever you like to bank it. Get eaten and you lose your bounty — but keep what you banked.",
+  "entry": "index.html",
+  "server": "server.js",
+  "cover": "cover.svg",
+  "orientation": "any",
+  "randomness": "seeded_shared",
+  "skillStatement": "Spawn positions come from the shared seed; all movement is player-controlled and resolved identically on the server. Survival and eliminations are determined by positioning, timing and risk management, not chance.",
+  "cosmeticSlots": ["skin", "trail"],
+  "formats": [
+    { "format": "perpetual", "minPlayers": 1, "maxPlayers": 24, "entryTiersCents": [100, 200, 500], "rakeBps": 0, "bountyBps": 9000, "maxDurationSec": 3600, "fillWaitSec": 0 }
+  ]
+}

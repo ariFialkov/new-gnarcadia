@@ -1,0 +1,12 @@
+# Optional: real Postgres for local prod-parity. Dev works with zero config (embedded PGlite).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gnarcadia
+      POSTGRES_PASSWORD: gnarcadia
+      POSTGRES_DB: gnarcadia
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+volumes:
+  pgdata: {}
