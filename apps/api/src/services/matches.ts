@@ -25,7 +25,7 @@ export async function liveManifest(db: Db, gameId: string): Promise<{ manifest: 
 }
 
 export function gameUrl(gameId: string, version: string, entry = "index.html") {
-  return `${env.PUBLIC_API_URL}/g/${gameId}/${version}/${entry}`;
+  return `${env.PUBLIC_GAMES_URL}/g/${gameId}/${version}/${entry}`;
 }
 
 /**

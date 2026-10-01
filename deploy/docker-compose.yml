@@ -1,0 +1,67 @@
+# Production stack on one VM:  docker compose --env-file .env up -d --build
+# Services: caddy (TLS + static + proxy) · api · realtime · postgres · backup
+name: gnarcadia
+services:
+  web:
+    build: { context: .., dockerfile: deploy/Dockerfile.web, args: { DOMAIN: "${DOMAIN}" } }
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment: { DOMAIN: "${DOMAIN}", ACME_EMAIL: "${ACME_EMAIL}" }
+    volumes: [caddy_data:/data, caddy_config:/config]
+    depends_on: [api, realtime]
+
+  api:
+    build: { context: .., dockerfile: deploy/Dockerfile.node }
+    command: ["node", "apps/api/dist/index.js"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      API_PORT: "4000"
+      DATABASE_URL: postgres://gnarcadia:${POSTGRES_PASSWORD}@postgres:5432/gnarcadia
+      STORAGE_DIR: /app/storage
+      PUBLIC_API_URL: https://${DOMAIN}/api
+      PUBLIC_ARCADE_URL: https://${DOMAIN}
+      PUBLIC_REALTIME_URL: wss://${DOMAIN}/rt
+      PUBLIC_GAMES_URL: https://games.${DOMAIN}
+      CORS_ORIGINS: https://${DOMAIN},https://www.${DOMAIN}
+    volumes: [game_storage:/app/storage]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"], interval: 30s, timeout: 5s, retries: 3 }
+
+  realtime:
+    build: { context: .., dockerfile: deploy/Dockerfile.node }
+    command: ["node", "apps/realtime/dist/index.js"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      REALTIME_PORT: "4100"
+      API_INTERNAL_URL: http://api:4000
+      REALTIME_CACHE_DIR: /app/.cache
+    depends_on: [api]
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost:4100/health"], interval: 30s, timeout: 5s, retries: 3 }
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment: { POSTGRES_USER: gnarcadia, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}", POSTGRES_DB: gnarcadia }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U gnarcadia -d gnarcadia"], interval: 10s, timeout: 5s, retries: 10 }
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment: { PGPASSWORD: "${POSTGRES_PASSWORD}" }
+    volumes: [./backups:/backups]
+    entrypoint: ["/bin/sh", "-c"]
+    # Nightly logical backup, 35-day rotation. Copy /deploy/backups off the box (rclone to R2/B2) once you have real users.
+    command: ["while true; do pg_dump -h postgres -U gnarcadia gnarcadia | gzip > /backups/gnarcadia-$(date +%F).sql.gz && find /backups -name '*.sql.gz' -mtime +35 -delete; sleep 86400; done"]
+    depends_on: [postgres]
+
+volumes:
+  pgdata: {}
+  game_storage: {}
+  caddy_data: {}
+  caddy_config: {}

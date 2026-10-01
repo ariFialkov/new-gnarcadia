@@ -1,0 +1,23 @@
+# Builds the arcade PWA and the analytics hub, then serves them (plus reverse-proxies API/realtime) with Caddy.
+# Caddy obtains and renews Let's Encrypt certificates automatically for DOMAIN and games.DOMAIN.
+FROM node:22-alpine AS build
+ARG DOMAIN=gnarcadia.com
+ENV VITE_API_URL=https://${DOMAIN}/api
+RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
+WORKDIR /app
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY packages/protocol ./packages/protocol
+COPY apps/arcade ./apps/arcade
+COPY apps/analytics ./apps/analytics
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/realtime/package.json ./apps/realtime/package.json
+COPY packages/sdk/package.json ./packages/sdk/package.json
+COPY packages/sdk-server/package.json ./packages/sdk-server/package.json
+COPY packages/cli/package.json ./packages/cli/package.json
+RUN pnpm install --frozen-lockfile --filter @gnarcadia/arcade... --filter @gnarcadia/analytics...
+RUN pnpm --filter @gnarcadia/protocol run build && pnpm --filter @gnarcadia/arcade --filter @gnarcadia/analytics run build
+
+FROM caddy:2-alpine
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/apps/arcade/dist /srv/arcade
+COPY --from=build /app/apps/analytics/dist /srv/analytics-hub

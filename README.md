@@ -51,6 +51,11 @@ pnpm gnarcadia publish --promote                   # appears in the arcade immed
 
 See [docs/sdk.md](docs/sdk.md).
 
+## Deploy to gnarcadia.com
+
+One VM, automatic HTTPS, rebuild with one script or on every push to `main`: see [docs/deploy.md](docs/deploy.md).
+`curl -fsSL .../scripts/server-setup.sh | bash -s -- gnarcadia.com you@mail.com` on a fresh Ubuntu box does everything.
+
 ## Production shape (cheap)
 
 Arcade + analytics on Cloudflare Pages (free) · API + realtime on one or two small VMs (Fly.io / Hetzner, ~$10–25/mo) ·

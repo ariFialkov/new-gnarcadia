@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import type { BridgeMatchInfo, BridgePlayerInfo } from "@gnarcadia/protocol";
 import { api, API_URL, API_ORIGIN, errorMessage, type MatchView } from "../lib/api.ts";
 import { useAuth } from "../lib/auth.tsx";
+import { AuthModal } from "../modals/AuthModal.tsx";
 import { useToast } from "../components/Toast.tsx";
 import { useModals } from "../modals/ModalManager.tsx";
 import { ConfirmModal } from "../modals/ConfirmModal.tsx";
@@ -38,6 +39,12 @@ export function PlayPage() {
   const [helloSeen, setHelloSeen] = useState(false);
   const [match, setMatch] = useState<MatchView | null>(null);
   const [matchErr, setMatchErr] = useState<string | null>(null);
+  const [authPrompted, setAuthPrompted] = useState(false);
+  useEffect(() => {
+    if (auth.user || !auth.ready || authPrompted) return;
+    setAuthPrompted(true);
+    void modals.open<unknown>((h) => <AuthModal {...h} reason="Sign in to play." initialTab="login" />).then((u) => { if (!u) nav("/", { replace: true }); });
+  }, [auth.user, auth.ready, authPrompted, modals, nav]);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
   const [leaving, setLeaving] = useState(false);

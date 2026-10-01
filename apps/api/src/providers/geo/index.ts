@@ -56,7 +56,7 @@ export function makeGeoProvider(): GeoProvider {
   switch (env.GEO_PROVIDER) {
     case "ipinfo": return new IpinfoGeoProvider();
     case "ipapi": return new IpApiGeoProvider();
-    case "mock": if (env.isProd) throw new Error("GEO_PROVIDER=mock is not allowed in production"); return new MockGeoProvider();
+    case "mock": if (env.isProd && !env.ALLOW_MOCK_PROVIDERS) throw new Error("GEO_PROVIDER=mock is not allowed in production (set ALLOW_MOCK_PROVIDERS=true for play-money test mode)"); return new MockGeoProvider();
     default: throw new Error(`unknown GEO_PROVIDER ${env.GEO_PROVIDER}`);
   }
 }

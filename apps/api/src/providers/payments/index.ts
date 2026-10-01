@@ -59,7 +59,7 @@ export class NuveiPaymentProvider implements PaymentProvider {
 export function makePaymentProvider(): PaymentProvider {
   switch (env.PAYMENT_PROVIDER) {
     case "nuvei": return new NuveiPaymentProvider();
-    case "mock": if (env.isProd) throw new Error("PAYMENT_PROVIDER=mock is not allowed in production"); return new MockPaymentProvider();
+    case "mock": if (env.isProd && !env.ALLOW_MOCK_PROVIDERS) throw new Error("PAYMENT_PROVIDER=mock is not allowed in production (set ALLOW_MOCK_PROVIDERS=true for play-money test mode)"); return new MockPaymentProvider();
     default: throw new Error(`unknown PAYMENT_PROVIDER ${env.PAYMENT_PROVIDER}`);
   }
 }

@@ -43,7 +43,7 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
 export function summary(g: typeof games.$inferSelect, m: any, plays24h: number, playersOnline: number): GameSummary {
   return {
     id: g.id, name: g.name, tagline: g.tagline ?? m.tagline ?? null, description: g.description || m.description || "", category: g.category, tags: g.tags, developer: g.developerName,
-    coverUrl: g.coverUrl ?? (g.liveVersion && m.cover ? `${env.PUBLIC_API_URL}/g/${g.id}/${g.liveVersion}/${m.cover}` : null), liveVersion: g.liveVersion,
+    coverUrl: g.coverUrl ?? (g.liveVersion && m.cover ? `${env.PUBLIC_GAMES_URL}/g/${g.id}/${g.liveVersion}/${m.cover}` : null), liveVersion: g.liveVersion,
     formats: (m.formats ?? []).map((f: any) => ({ format: f.format, minPlayers: f.minPlayers, maxPlayers: f.maxPlayers, entryTiersCents: f.entryTiersCents, rakeBps: f.rakeBps ?? 1000 })),
     stats: { plays24h, playersOnline, rating: g.rating }, featured: g.featured, isNew: Date.now() - g.createdAt.getTime() < 14 * 86400_000, status: g.status as any, createdAt: g.createdAt.toISOString(),
   };

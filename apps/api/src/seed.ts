@@ -17,15 +17,25 @@ import { GameManifestSchema, JURISDICTIONS, type Currency, type MatchResult } fr
  * the analytics hub has something to show. Idempotent-ish: skips if users already exist.
  */
 export async function seedIfEmpty(db: Db) {
-  const [{ c }] = ((await db.execute(sql`SELECT count(*) c FROM users`)) as any).rows;
-  await seedExampleGames(db); // always re-sync examples so new versions show up
+  const [{ c }] = ((await db.execute(sql`SELECT count(*) c FROM users WHERE email NOT LIKE '%@gnarcadia.local' AND email <> ${env.ADMIN_EMAIL.toLowerCase()}`)) as any).rows;
   if (Number(c) > 0) return;
   console.log("[seed] empty database — seeding demo data");
   await seedAll(db);
 }
 
-async function seedExampleGames(db: Db) {
-  const roots = [path.resolve(process.cwd(), "examples/games"), path.resolve(process.cwd(), "../../examples/games")];
+/** Creates the admin from ADMIN_EMAIL / ADMIN_PASSWORD if no admin exists yet (prod bootstrap). */
+export async function bootstrapAdmin(db: Db) {
+  if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) return;
+  const email = env.ADMIN_EMAIL.toLowerCase();
+  const existing = (await db.select().from(users).where(eq(users.email, email)))[0];
+  if (existing) { if (!existing.roles.includes("admin")) await db.update(users).set({ roles: [...existing.roles, "admin", "developer"] }).where(eq(users.id, existing.id)); return; }
+  if (env.ADMIN_PASSWORD.length < 12) throw new Error("ADMIN_PASSWORD must be at least 12 characters");
+  await db.insert(users).values({ id: uuid(), email, passwordHash: await hashPassword(env.ADMIN_PASSWORD), username: env.ADMIN_USERNAME, dob: "1990-01-01", country: "CA", region: "CA-ON", currency: "CAD", termsVersion: env.TERMS_VERSION, kycTier: 2, kycStatus: "approved", roles: ["admin", "developer"] });
+  console.log(`[bootstrap] created admin ${email}`);
+}
+
+export async function seedExampleGames(db: Db) {
+  const roots = [path.resolve(process.cwd(), "examples/games"), path.resolve(process.cwd(), "../../examples/games"), "/app/examples/games"];
   const root = roots.find((r) => fs.existsSync(r)); if (!root) return;
   for (const dir of fs.readdirSync(root)) {
     const mPath = path.join(root, dir, "gnarcadia.json"); if (!fs.existsSync(mPath)) continue;
@@ -49,8 +59,8 @@ async function seedAll(db: Db) {
     await db.insert(users).values({ id, email: `${username}@example.com`, passwordHash: pw, dob: "1995-06-15", country, currency: country === "CA" ? "CAD" : "USD", termsVersion: env.TERMS_VERSION, kycTier: 1, kycStatus: "approved", roles: [], ...rest, username, region });
     return id;
   };
-  const admin = await mk({ username: "admin", region: "CA-ON", roles: ["admin", "developer"], email: "admin@gnarcadia.local" });
-  const dev = await mk({ username: "dev", region: "CA-ON", roles: ["developer"], email: "dev@gnarcadia.local" });
+  const admin = await mk({ username: "demo_admin", region: "CA-ON", roles: ["admin", "developer"], email: "admin@gnarcadia.local" });
+  const dev = await mk({ username: "demo_dev", region: "CA-ON", roles: ["developer"], email: "dev@gnarcadia.local" });
   console.log(`[seed] admin login: admin@gnarcadia.local / password123   dev login: dev@gnarcadia.local / password123`);
 
   const regionWeights: [string, number][] = [["CA-ON", 30], ["US-CA", 20], ["US-NY", 14], ["CA-BC", 10], ["CA-AB", 8], ["US-OH", 6], ["US-CO", 5], ["US-MO", 3], ["CA-NS", 3], ["US-PA", 1]];

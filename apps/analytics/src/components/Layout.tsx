@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useApp, type Days } from "../lib/store";
-import { API_BASE, DEFAULT_DEV_KEY } from "../lib/api";
+import { API_BASE, adminLogin, ApiError } from "../lib/api";
 import { relTime } from "../lib/format";
 
 const I = {
@@ -41,7 +41,7 @@ const TITLES: Record<string, [string, string]> = {
 };
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { days, setDays, live, setLive, adminKey, promptForKey, theme, setTheme, overview } = useApp();
+  const { days, setDays, live, setLive, adminKey, session, signOut, theme, setTheme, overview } = useApp();
   const loc = useLocation();
   const [title, sub] = TITLES[loc.pathname] ?? ["Analytics", ""];
   const [, force] = useState(0);
@@ -110,9 +110,9 @@ export function Layout({ children }: { children: ReactNode }) {
         <button className="btn icon ghost" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Toggle theme" title="Toggle theme">
           {theme === "dark" ? "☀" : "☾"}
         </button>
-        <button className="key-pill" onClick={promptForKey} title="Change admin key">
+        <button className="key-pill" onClick={signOut} title="Sign out">
           <span className="dot" style={{ background: overview.error?.unauthorized ? "var(--critical)" : adminKey ? "var(--status-live)" : "var(--warning)" }} />
-          {adminKey ? (adminKey === DEFAULT_DEV_KEY ? "dev key" : `key ••••${adminKey.slice(-4)}`) : "no key"}
+          {session ? `${session.username} · sign out` : "sign in"}
         </button>
       </header>
 
@@ -121,47 +121,36 @@ export function Layout({ children }: { children: ReactNode }) {
   );
 }
 
-export function AdminKeyModal() {
-  const { needsKey, adminKey, setAdminKey, overview } = useApp();
-  const [val, setVal] = useState(adminKey ?? DEFAULT_DEV_KEY);
-  useEffect(() => {
-    if (needsKey) setVal(adminKey ?? DEFAULT_DEV_KEY);
-  }, [needsKey, adminKey]);
-  if (!needsKey) return null;
-  const rejected = overview.error?.unauthorized;
+/**
+ * Full-screen admin sign-in. Nothing from the hub renders until an account with the `admin` role signs in.
+ * Sessions live in sessionStorage (cleared when the tab closes) and refresh silently.
+ */
+export function AdminGate({ children }: { children: ReactNode }) {
+  const { needsKey, session, signIn } = useApp();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (session || !needsKey) return <>{children}</>;
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="key-title">
+    <div className="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
       <form
-        className="modal"
-        onSubmit={(e) => {
+        className="gate-card"
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (val.trim()) setAdminKey(val.trim());
+          setBusy(true); setError(null);
+          try { signIn(await adminLogin(email.trim(), password)); }
+          catch (err) { setError(err instanceof ApiError ? (err.status === 0 ? err.message : err.status === 401 ? "Incorrect email or password." : err.message) : "Sign-in failed"); }
+          finally { setBusy(false); }
         }}
       >
-        <div>
-          <h2 id="key-title" style={{ fontSize: 18 }}>
-            Admin key
-          </h2>
-          <p style={{ marginTop: 6 }}>
-            Requests are sent with <code>X-Admin-Key</code> to <code>{API_BASE}</code>. The key is kept in this browser only.
-          </p>
-        </div>
-        {rejected && (
-          <div className="error-box">
-            <strong>Rejected</strong> The API refused the previous key ({overview.error?.status}).
-          </div>
-        )}
-        <input className="input" autoFocus value={val} onChange={(e) => setVal(e.target.value)} placeholder="dev-admin-key" spellCheck={false} aria-label="Admin key" />
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          {adminKey && (
-            <button type="button" className="btn" onClick={() => setAdminKey(adminKey)}>
-              Cancel
-            </button>
-          )}
-          <button type="submit" className="btn primary" disabled={!val.trim()}>
-            Save key
-          </button>
-        </div>
+        <div className="gate-brand"><span className="gate-logo">G</span><div><strong>Gnarcadia</strong><div className="muted">Analytics Hub · administrators only</div></div></div>
+        <h1 id="gate-title">Sign in</h1>
+        <label className="field"><span>Email or username</span><input className="input" autoFocus autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+        <label className="field"><span>Password</span><input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+        {error && <div className="error-box"><strong>Sign-in failed</strong> {error}</div>}
+        <button type="submit" className="btn primary" disabled={busy || !email || !password}>{busy ? "Signing in…" : "Enter the hub"}</button>
+        <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>Connected to {API_BASE.replace(/^https?:\/\//, "")}. Access is logged.</p>
       </form>
     </div>
   );

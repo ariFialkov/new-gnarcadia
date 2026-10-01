@@ -4,7 +4,7 @@ import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { eq } from "drizzle-orm";
 import { ZodError } from "zod";
-import { env } from "./env.js";
+import { env, testMode } from "./env.js";
 import { getDb, type Db } from "./db/client.js";
 import { users } from "./db/schema.js";
 import { HttpError, unauthorized, forbidden } from "./lib/errors.js";
@@ -78,7 +78,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     return reply.status(500).send({ error: "internal", message: env.isProd ? "Internal error" : err.message });
   });
 
-  app.get("/health", async () => ({ ok: true, env: env.NODE_ENV, providers: { geo: env.GEO_PROVIDER, kyc: env.KYC_PROVIDER, payments: env.PAYMENT_PROVIDER }, termsVersion: env.TERMS_VERSION }));
+  app.get("/health", async () => ({ ok: true, env: env.NODE_ENV, testMode, providers: { geo: env.GEO_PROVIDER, kyc: env.KYC_PROVIDER, payments: env.PAYMENT_PROVIDER }, termsVersion: env.TERMS_VERSION, gamesUrl: env.PUBLIC_GAMES_URL }));
 
   await app.register(authRoutes, { prefix: "/auth" });
   await app.register(meRoutes);

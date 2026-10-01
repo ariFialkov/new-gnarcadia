@@ -56,7 +56,7 @@ export class DiditKycProvider implements KycProvider {
 export function makeKycProvider(): KycProvider {
   switch (env.KYC_PROVIDER) {
     case "didit": return new DiditKycProvider();
-    case "mock": if (env.isProd) throw new Error("KYC_PROVIDER=mock is not allowed in production"); return new MockKycProvider();
+    case "mock": if (env.isProd && !env.ALLOW_MOCK_PROVIDERS) throw new Error("KYC_PROVIDER=mock is not allowed in production (set ALLOW_MOCK_PROVIDERS=true for play-money test mode)"); return new MockKycProvider();
     default: throw new Error(`unknown KYC_PROVIDER ${env.KYC_PROVIDER}`);
   }
 }

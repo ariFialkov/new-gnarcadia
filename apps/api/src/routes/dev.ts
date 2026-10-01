@@ -57,7 +57,7 @@ export const devRoutes: FastifyPluginAsync = async (app) => {
     if (manifest.server && !bundleFileExists(id, manifest.version, manifest.server)) { removeBundle(id, manifest.version); throw badRequest("server_missing", `server module '${manifest.server}' not found in bundle`); }
     await req.db.insert(gameVersions).values({ id: uuid(), gameId: id, version: manifest.version, manifest: manifest as any, storagePath: `games/${id}/${manifest.version}`, sizeBytes: bytes, status: "uploaded" });
     await req.db.update(games).set({ name: manifest.name, description: manifest.description, tagline: manifest.tagline ?? null, category: manifest.category, tags: manifest.tags, developerName: manifest.developer, updatedAt: new Date() }).where(eq(games.id, id));
-    return { gameId: id, version: manifest.version, files, bytes, previewUrl: `${env.PUBLIC_API_URL}/g/${id}/${manifest.version}/${manifest.entry}`, next: `POST /dev/games/${id}/promote {"version":"${manifest.version}"}` };
+    return { gameId: id, version: manifest.version, files, bytes, previewUrl: `${env.PUBLIC_GAMES_URL}/g/${id}/${manifest.version}/${manifest.entry}`, next: `POST /dev/games/${id}/promote {"version":"${manifest.version}"}` };
   });
 
   /** Make a version live (company devs can self-promote; indie devs go through admin review). */

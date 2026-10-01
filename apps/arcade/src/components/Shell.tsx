@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { API_URL } from "../lib/api.ts";
 import { NavLink, Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth.tsx";
 import type { Me } from "../lib/api.ts";
@@ -21,9 +23,13 @@ export function Shell() {
   const openAuth = (tab: "login" | "signup") => void modals.open<Me>((h) => <AuthModal {...h} initialTab={tab} />);
   const openWallet = () => void modals.open((h) => <WalletModal {...h} />);
 
+  const [testMode, setTestMode] = useState(false);
+  useEffect(() => { fetch(`${API_URL}/health`).then((r) => r.json()).then((h) => setTestMode(!!h?.testMode)).catch(() => {}); }, []);
+
   return (
     <div className="shell">
       <a href="#main" className="skip-link">Skip to content</a>
+      {testMode && <div className="testmode-banner" role="status">Test mode · play money only — deposits and prizes are not real while providers are mocked.</div>}
       <header className="topbar">
         <div className="container topbar__inner">
           <Link to="/" className="brand" aria-label="Gnarcadia home">

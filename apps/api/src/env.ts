@@ -19,6 +19,17 @@ export const env = {
   PUBLIC_API_URL: process.env.PUBLIC_API_URL ?? "http://localhost:4000",
   PUBLIC_ARCADE_URL: process.env.PUBLIC_ARCADE_URL ?? "http://localhost:5173",
   PUBLIC_REALTIME_URL: process.env.PUBLIC_REALTIME_URL ?? "ws://localhost:4100",
+  /** Origin game bundles are served from. In production this MUST be a different origin from the arcade
+   *  (e.g. https://games.gnarcadia.com) so the sandboxed iframe cannot reach the player's session. */
+  PUBLIC_GAMES_URL: (process.env.PUBLIC_GAMES_URL ?? process.env.PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, ""),
+  /** Test-phase escape hatch: lets mock geo/KYC/payments run under NODE_ENV=production (play-money mode). */
+  ALLOW_MOCK_PROVIDERS: bool(process.env.ALLOW_MOCK_PROVIDERS, false),
+  /** Bootstrap admin created on first boot if no admin exists. */
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? "",
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ?? "",
+  ADMIN_USERNAME: process.env.ADMIN_USERNAME ?? "admin",
+  SEED_DEMO_DATA: bool(process.env.SEED_DEMO_DATA, process.env.NODE_ENV !== "production"),
+  SYNC_EXAMPLE_GAMES: bool(process.env.SYNC_EXAMPLE_GAMES, true),
   GEO_PROVIDER: process.env.GEO_PROVIDER ?? "mock",
   GEO_DEV_REGION: process.env.GEO_DEV_REGION ?? "CA-ON",
   IPINFO_TOKEN: process.env.IPINFO_TOKEN ?? "",
@@ -35,4 +46,6 @@ if (env.isProd) {
     if (env[k].startsWith("change-me") || env[k].startsWith("dev-")) throw new Error(`${k} must be set to a real secret in production`);
   }
   if (!env.DATABASE_URL) throw new Error("DATABASE_URL is required in production");
+  if (env.ALLOW_MOCK_PROVIDERS) console.warn("\n  ⚠  ALLOW_MOCK_PROVIDERS=true — mock geo/KYC/payments are enabled. This is PLAY-MONEY TEST MODE, not a real-money launch.\n");
 }
+export const testMode = env.ALLOW_MOCK_PROVIDERS || !env.isProd || [env.GEO_PROVIDER, env.KYC_PROVIDER, env.PAYMENT_PROVIDER].includes("mock");

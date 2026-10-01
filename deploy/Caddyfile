@@ -1,0 +1,66 @@
+# Production routing for one domain. Caddy handles HTTPS automatically (Let's Encrypt / ZeroSSL).
+#   https://DOMAIN/                 arcade PWA (static, SPA fallback)
+#   https://DOMAIN/analytics-hub/   analytics hub (static, SPA fallback, admin login in-app)
+#   https://DOMAIN/api/*            API (prefix stripped)
+#   wss://DOMAIN/rt                 realtime WebSocket server
+#   https://games.DOMAIN/g/*        game bundles + SDK (separate origin keeps the sandboxed iframe isolated)
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN}, www.{$DOMAIN} {
+	encode zstd gzip
+
+	@www host www.{$DOMAIN}
+	redir @www https://{$DOMAIN}{uri} permanent
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "geolocation=(self), camera=(), microphone=()"
+		-Server
+	}
+
+	handle_path /api/* {
+		reverse_proxy api:4000
+	}
+	handle /rt {
+		reverse_proxy realtime:4100
+	}
+	handle_path /rt/* {
+		reverse_proxy realtime:4100
+	}
+
+	handle /analytics-hub* {
+		root * /srv
+		@assets path /analytics-hub/assets/* /analytics-hub/data/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header X-Frame-Options DENY
+		header X-Robots-Tag "noindex, nofollow"
+		try_files {path} /analytics-hub/index.html
+		file_server
+	}
+
+	handle {
+		root * /srv/arcade
+		@immutable path /assets/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		@sw path /sw.js /registerSW.js /manifest.webmanifest
+		header @sw Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+games.{$DOMAIN} {
+	encode zstd gzip
+	# Only bundles and the SDK are reachable on this origin; everything else on the API stays private.
+	@allowed path /g/* /sdk/* /health
+	handle @allowed {
+		reverse_proxy api:4000
+	}
+	handle {
+		respond "not found" 404
+	}
+}

@@ -5,6 +5,9 @@ import { VitePWA } from "vite-plugin-pwa";
 /** API origin at build/runtime. Matches VITE_API_URL in .env (default http://localhost:4000). */
 const apiUrl = (process.env.VITE_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 const apiOrigin = new URL(apiUrl).origin;
+/** Path prefix of the API on that origin ("" locally, "/api" behind the production proxy). */
+const apiPath = new URL(apiUrl).pathname.replace(/\/$/, "");
+const apiRoute = (re: RegExp) => (url: URL) => url.origin === apiOrigin && url.pathname.startsWith(apiPath) && re.test(url.pathname.slice(apiPath.length));
 
 export default defineConfig({
   plugins: [
@@ -36,21 +39,21 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
         navigateFallback: "/index.html",
         // The game runner and the wallet return page must always hit the network / app shell fresh.
-        navigateFallbackDenylist: [/^\/g\//, /^\/sdk\//],
+        navigateFallbackDenylist: [/^\/g\//, /^\/sdk\//, /^\/api\//, /^\/rt(\/|$)/, /^\/analytics-hub(\/|$)/],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             // Game catalogue: fast when online, still browsable when flaky. Never cache auth/wallet/matches/me.
-            urlPattern: ({ url, request }) => request.method === "GET" && url.origin === apiOrigin && /^\/games(\/|$)/.test(url.pathname),
+            urlPattern: ({ url, request }) => request.method === "GET" && apiRoute(/^\/games(\/|$)/)(url),
             handler: "NetworkFirst",
             options: { cacheName: "gn-games-api", networkTimeoutSeconds: 4, expiration: { maxEntries: 60, maxAgeSeconds: 10 * 60 }, cacheableResponse: { statuses: [0, 200] } },
           },
           {
-            urlPattern: ({ url }) => url.origin === apiOrigin && /^\/(auth|wallet|matches|me)(\/|$)/.test(url.pathname),
+            urlPattern: ({ url }) => apiRoute(/^\/(auth|wallet|matches|me)(\/|$)/)(url),
             handler: "NetworkOnly",
           },
           {
-            urlPattern: ({ url }) => url.origin === apiOrigin && /^\/(jurisdictions|terms\/current)$/.test(url.pathname),
+            urlPattern: ({ url }) => apiRoute(/^\/(jurisdictions|terms\/current)$/)(url),
             handler: "StaleWhileRevalidate",
             options: { cacheName: "gn-static-api", expiration: { maxEntries: 10, maxAgeSeconds: 24 * 3600 } },
           },

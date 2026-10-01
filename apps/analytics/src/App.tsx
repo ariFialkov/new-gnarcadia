@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppProvider } from "./lib/store";
-import { AdminKeyModal, Layout } from "./components/Layout";
+import { AdminGate, Layout } from "./components/Layout";
 import MapPage from "./pages/MapPage";
 import OverviewPage from "./pages/OverviewPage";
 import UsersPage from "./pages/UsersPage";
@@ -12,6 +12,7 @@ import OpsPage from "./pages/OpsPage";
 export default function App() {
   return (
     <AppProvider>
+      <AdminGate>
       <Layout>
         <Routes>
           <Route path="/" element={<MapPage />} />
@@ -24,7 +25,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
-      <AdminKeyModal />
+      </AdminGate>
     </AppProvider>
   );
 }

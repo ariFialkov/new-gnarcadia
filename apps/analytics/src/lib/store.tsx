@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AnalyticsOverview } from "@gnarcadia/protocol";
-import { api, getAdminKey, onUnauthorized, setAdminKey as persistKey } from "./api";
+import { api, getAdminKey, getSession, onUnauthorized, setSession, type AdminSession } from "./api";
 import { useApi, type AsyncState } from "./hooks";
 import { paletteFor, type ChartPalette, type Theme } from "./palette";
 
@@ -8,8 +8,11 @@ export type Days = 7 | 30 | 90;
 export const LIVE_INTERVAL_MS = 30_000;
 
 interface AppState {
+  /** Credential marker: the signed-in admin's token (or a legacy API key). Pages gate their fetches on it. */
   adminKey: string | null;
-  setAdminKey: (k: string | null) => void;
+  session: AdminSession | null;
+  signIn: (s: AdminSession) => void;
+  signOut: () => void;
   needsKey: boolean;
   promptForKey: () => void;
   days: Days;
@@ -27,8 +30,9 @@ const Ctx = createContext<AppState | null>(null);
 const THEME_KEY = "gnarcadia.analytics.theme";
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [adminKey, setKeyState] = useState<string | null>(() => getAdminKey());
-  const [needsKey, setNeedsKey] = useState<boolean>(() => !getAdminKey());
+  const [session, setSessionState] = useState<AdminSession | null>(() => getSession());
+  const adminKey = session?.accessToken ?? getAdminKey();
+  const [needsKey, setNeedsKey] = useState<boolean>(() => !getSession() && !getAdminKey());
   const [days, setDays] = useState<Days>(30);
   const [live, setLive] = useState(true);
   const [theme, setThemeState] = useState<Theme>(() => {
@@ -49,20 +53,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
-  useEffect(() => onUnauthorized(() => setNeedsKey(true)), []);
+  useEffect(() => onUnauthorized(() => { if (!getSession()) { setSessionState(null); setNeedsKey(true); } }), []);
 
-  const setAdminKey = useCallback((k: string | null) => {
-    persistKey(k);
-    setKeyState(k);
-    setNeedsKey(!k);
-  }, []);
+  const signIn = useCallback((s: AdminSession) => { setSession(s); setSessionState(s); setNeedsKey(false); }, []);
+  const signOut = useCallback(() => { setSession(null); setSessionState(null); setNeedsKey(true); }, []);
 
   const overview = useApi<AnalyticsOverview>(adminKey ? (signal) => api.overview(days, signal) : null, [days, adminKey], live ? LIVE_INTERVAL_MS : 0);
 
   const value = useMemo<AppState>(
     () => ({
       adminKey,
-      setAdminKey,
+      session,
+      signIn,
+      signOut,
       needsKey,
       promptForKey: () => setNeedsKey(true),
       days,
@@ -74,7 +77,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       palette: paletteFor(theme),
       overview,
     }),
-    [adminKey, setAdminKey, needsKey, days, live, theme, overview],
+    [adminKey, session, signIn, signOut, needsKey, days, live, theme, overview],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

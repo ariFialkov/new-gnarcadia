@@ -1,0 +1,25 @@
+# Shared image for the API and the realtime server (same monorepo build; CMD differs per service).
+# Build context = repo root:  docker build -f deploy/Dockerfile.node -t gnarcadia-node .
+FROM node:22-alpine AS build
+RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
+WORKDIR /app
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY packages ./packages
+COPY apps/api ./apps/api
+COPY apps/realtime ./apps/realtime
+COPY examples ./examples
+# arcade/analytics are not needed here but the workspace manifest lists them; give pnpm their package.json so the lockfile resolves.
+COPY apps/arcade/package.json ./apps/arcade/package.json
+COPY apps/analytics/package.json ./apps/analytics/package.json
+RUN pnpm install --frozen-lockfile --filter @gnarcadia/api... --filter @gnarcadia/realtime... --filter @gnarcadia/sdk... --filter @gnarcadia/cli...
+RUN pnpm --filter @gnarcadia/protocol --filter @gnarcadia/sdk --filter @gnarcadia/sdk-server --filter @gnarcadia/cli --filter @gnarcadia/api --filter @gnarcadia/realtime run build
+
+FROM node:22-alpine
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /app ./
+RUN mkdir -p /app/storage /app/.cache && chown -R node:node /app
+USER node
+EXPOSE 4000 4100
+# Overridden per service in docker-compose.yml
+CMD ["node", "apps/api/dist/index.js"]

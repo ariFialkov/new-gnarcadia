@@ -15,7 +15,7 @@ let cache: Promise<RegionFeature[]> | null = null;
 /** Loads /data/north-america.topo.json once and converts object `regions` to GeoJSON features. */
 export function loadRegions(): Promise<RegionFeature[]> {
   if (!cache) {
-    cache = fetch("/data/north-america.topo.json")
+    cache = fetch(`${import.meta.env.BASE_URL}data/north-america.topo.json`)
       .then((r) => {
         if (!r.ok) throw new Error(`Map data failed to load (${r.status})`);
         return r.json() as Promise<Topo>;

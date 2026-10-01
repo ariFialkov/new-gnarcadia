@@ -1,0 +1,22 @@
+# Continuous deployment: every push to main rebuilds the live site.
+# One-time setup in GitHub → Settings → Secrets and variables → Actions:
+#   DEPLOY_HOST  = server IP or hostname
+#   DEPLOY_USER  = ssh user (root or the user that ran server-setup.sh)
+#   DEPLOY_SSH_KEY = private key whose public half is in ~/.ssh/authorized_keys on the server
+name: Deploy
+on:
+  push: { branches: [main] }
+  workflow_dispatch:
+concurrency: { group: deploy, cancel-in-progress: false }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          command_timeout: 30m
+          script: /opt/gnarcadia/scripts/deploy.sh main
